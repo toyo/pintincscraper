@@ -48,7 +48,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = page.FindByLink(`電気使用量`).Click()
+	if err := page.Navigate("https://pintinc.jp/mypage/electricity/"); err != nil {
+		log.Fatalf("ページが表示できません: %v", err)
+	}
+
+	err = page.FindByButton(`日別・時間別使用量`).Click()
 	if err != nil {
 		log.Fatal(err)
 	}
