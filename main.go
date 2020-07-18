@@ -15,11 +15,28 @@ import (
 func main() {
 
 	var (
-		id       = flag.String(`id`, ``, `メールアドレス`)
-		password = flag.String(`password`, ``, `パスワード`)
+		id           = flag.String(`id`, ``, `メールアドレス`)
+		password     = flag.String(`password`, ``, `パスワード`)
+		startdatestr = flag.String(`startdate`, ``, `出力開始日`)
+		enddatestr   = flag.String(`enddate`, ``, `出力終了日`)
 	)
 
 	flag.Parse()
+
+	startdate, err := time.Parse(`20060102`, *startdatestr)
+	switch {
+	case err != nil:
+		fmt.Println(err)
+		startdate = time.Now()
+	}
+
+	enddate, err := time.Parse(`20060102`, *enddatestr)
+	switch {
+	case err != nil:
+		fmt.Println(err)
+		enddate = time.Now()
+	}
+
 	driver := agouti.ChromeDriver()
 	if err := driver.Start(); err != nil {
 		log.Fatalf("ブラウザ(Selenium Webdriver)が見つかりません: %v", err)
@@ -62,22 +79,25 @@ func main() {
 	}
 
 	for {
-		var dt time.Time
-		{
-			var str string
-			str, err = page.FindByName(`yyyymmdd`).Attribute(`value`)
-			if err != nil {
-				log.Fatal(err)
-			}
-			dt, err = time.Parse(`20060102`, str)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-		fmt.Print(dt.Format(`2006/01/02`))
 
-		amount := make([]float64, 24)
-		{
+		var str string
+		str, err = page.FindByName(`yyyymmdd`).Attribute(`value`)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var dt time.Time
+		dt, err = time.Parse(`20060102`, str)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if !dt.Before(startdate) && !dt.After(enddate) {
+
+			fmt.Print(dt.Format(`2006/01/02`))
+
+			amount := make([]float64, 24)
+
 			var val []struct {
 				Label   string          `json:"label"`
 				Amounts [][]interface{} `json:"amounts"`
@@ -111,17 +131,17 @@ func main() {
 					}
 				}
 			}
-		}
 
-		for _, v := range amount {
-			fmt.Print(`,`)
-			fmt.Print(v)
+			for _, v := range amount {
+				fmt.Print(`,`)
+				fmt.Print(v)
+			}
+			fmt.Println()
 		}
-		err = page.FindByLink(`前の日`).Click()
+		err = page.FindByClass(`arrow-left`).Click()
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println()
 	}
 	return
 
